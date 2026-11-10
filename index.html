@@ -1,1 +1,62 @@
+Skip to content
+a0958738559-oss
+539-ai-app
+Repository navigation
+Code
+Issues
+Pull requests
+Actions
+Projects
+Wiki
+Security and quality
+Insights
+Settings
+Commit 6f68aa7
+a0958738559-oss
+a0958738559-oss
+authored
+1 hour ago
+·
+·
+Verified
+Update index.html
+main
+1 parent 
+120b117
+ commit 
+6f68aa7
+1 file changed
+
+-15
+Lines changed: 0 additions & 15 deletions
+Search within code
+ 
+‎index.html‎
+-15
+Lines changed: 0 additions & 15 deletions
+Original file line number	Diff line number	Diff line change
+@@ -1,16 +1 @@
+
+<!doctype html><html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#154a73"><title>539 AI 統計參考</title><style>:root{font-family:system-ui,'Noto Sans TC',sans-serif;color:#18324a;background:#edf3f8}*{box-sizing:border-box}body{margin:0}header{background:#154a73;color:white;padding:22px 16px;text-align:center}h1{font-size:1.65rem;margin:0}main{max-width:760px;margin:auto;padding:16px}.card{background:white;border-radius:18px;padding:20px;margin:0 0 16px;box-shadow:0 3px 16px #18324a14}h2{font-size:1.2rem;margin:0 0 12px}p{line-height:1.6}.muted{color:#637586;font-size:.91rem}.warning{background:#fff3d8;padding:12px;border-radius:10px;color:#755000}button,.btn{border:0;border-radius:10px;background:#155e95;color:white;padding:12px 15px;font-size:1rem;cursor:pointer;margin:4px 4px 4px 0}button.secondary{background:#e3edf4;color:#154a73}input,textarea{width:100%;padding:11px;border:1px solid #b9cbd8;border-radius:9px;font-size:1rem;margin:6px 0 10px}textarea{min-height:95px}.balls{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0 18px}.ball{width:48px;height:48px;display:grid;place-items:center;border-radius:50%;background:#e43d3d;color:white;font-weight:700;font-size:1.12rem}.set{padding:8px 0;border-bottom:1px solid #edf0f3}.set:last-child{border:0}.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}.metric{background:#f1f6fa;padding:12px;border-radius:10px}.metric strong{display:block;font-size:1.2rem}small{color:#607080}table{width:100%;border-collapse:collapse;font-size:.9rem}td,th{padding:8px;border-bottom:1px solid #e7edf2;text-align:left}.scroll{overflow-x:auto}footer{text-align:center;padding:18px;color:#637586;font-size:.85rem}</style></head><body><header><h1>🎯 539 AI 統計參考</h1><div>歷史統計・五組參考選號・資料來源透明</div></header><main><section class="card"><h2>最新已匯入開獎資料</h2><div id="latest" class="warning">尚未匯入已核實的開獎資料。下方號碼不會假裝是最新開獎結果。</div><p class="muted" id="count"></p><button onclick="loadRemote()">🔄 檢查線上資料</button><button class="secondary" onclick="document.getElementById('import').scrollIntoView()">匯入開獎紀錄</button></section><section class="card"><h2>下一期五組統計參考號碼</h2><div id="sets" class="warning">請先匯入歷史開獎資料，才能依統計產生參考號碼。</div><button onclick="render()">重新產生五組</button><p class="muted">所有組合均為統計參考，並非可預知的開獎結果；每一合法組合的中獎機率相同。</p></section><section class="card"><h2>歷史統計分析</h2><label for="window">分析最近期數</label><select id="window" onchange="render()" style="padding:10px;border-radius:9px;width:100%"><option>30</option><option>60</option><option>100</option><option selected>200</option></select><div id="stats" style="margin-top:14px">尚無資料</div></section><section class="card" id="import"><h2>匯入官方核實的開獎紀錄</h2><p>每行輸入一筆：<b>日期,期別,號碼1,號碼2,號碼3,號碼4,號碼5</b>。例如格式示範（<b>非真實開獎資料</b>）：</p><pre style="white-space:pre-wrap;background:#f1f6fa;padding:10px;border-radius:9px">2026-01-01,115000001,01,08,17,25,39</pre><textarea id="paste" placeholder="貼上已核實的開獎紀錄，每行一筆"></textarea><button onclick="importText()">儲存匯入資料</button><button class="secondary" onclick="document.getElementById('file').click()">選擇 CSV / TXT 檔案</button><input id="file" type="file" accept=".csv,.txt,text/plain,text/csv" style="display:none" onchange="readFile(event)"><button class="secondary" onclick="exportCSV()">備份 CSV</button><p class="muted" id="msg"></p><p class="muted">匯入後資料儲存在此手機瀏覽器內；換手機或清除網站資料前請先備份。</p></section><section class="card"><h2>線上資料來源設定（選用）</h2><p class="muted">可填入您自己維護、允許跨網域讀取的 JSON 網址。JSON 格式為 [{"date":"2026-01-01","period":"115000001","numbers":[1,8,17,25,39]}]。未設定時不會假裝已自動更新。</p><input id="url" placeholder="https://您的網站/draws.json"><button onclick="saveUrl()">儲存資料網址</button><p class="muted">GitHub Pages 只是靜態網站，無法單靠前端直接保證連上台灣彩券官方資料；每日自動更新仍需要可靠資料來源及排程程序。</p></section></main><footer>本工具為娛樂性統計參考，不保證中獎。請理性投注。</footer><script>
+const KEY='tw539_verified_v2',URLKEY='tw539_url_v2';let draws=[];try{draws=JSON.parse(localStorage.getItem(KEY)||'[]')}catch(e){}document.getElementById('url').value=localStorage.getItem(URLKEY)||'';
+function valid(d){return d&&/^\d{4}-\d{2}-\d{2}$/.test(d.date)&&/^\d+$/.test(String(d.period))&&Array.isArray(d.numbers)&&d.numbers.length===5&&new Set(d.numbers).size===5&&d.numbers.every(n=>Number.isInteger(n)&&n>=1&&n<=39)&&!Number.isNaN(Date.parse(d.date+'T00:00:00'))}
+function normalize(items){const map=new Map;for(const d of items){let x={date:String(d.date||''),period:String(d.period||''),numbers:(d.numbers||[]).map(Number)};if(valid(x))map.set(x.period,x)}return [...map.values()].sort((a,b)=>b.date.localeCompare(a.date)||b.period.localeCompare(a.period))}
+function parseCSV(s){let out=[],bad=0;for(let line of s.split(/\r?\n/)){line=line.trim();if(!line)continue;let p=line.split(/[,，\t]/).map(x=>x.trim());if(p.length!==7){bad++;continue}let d={date:p[0].replace(/\//g,'-'),period:p[1],numbers:p.slice(2).map(Number)};if(valid(d))out.push(d);else bad++}return {out,bad}}
+function persist(){localStorage.setItem(KEY,JSON.stringify(draws));render()}
+function importText(){const {out,bad}=parseCSV(document.getElementById('paste').value);draws=normalize([...draws,...out]);persist();document.getElementById('msg').textContent=`成功解析 ${out.length} 筆，略過 ${bad} 筆；目前共 ${draws.length} 筆。`}
+function readFile(e){const f=e.target.files[0];if(!f)return;f.text().then(s=>{document.getElementById('paste').value=s;importText()})}
+function exportCSV(){let csv=draws.map(d=>[d.date,d.period,...d.numbers.map(n=>String(n).padStart(2,'0'))].join(',')).join('\n');const a=document.createElement('a');a.href=URL.createObjectURL(new Blob(['\ufeff'+csv],{type:'text/csv'}));a.download='539-history.csv';a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1000)}
+function saveUrl(){let s=document.getElementById('url').value.trim();if(s&&!/^https:\/\//.test(s)){alert('請使用 https:// 網址');return}localStorage.setItem(URLKEY,s);alert('已儲存網址，請按「檢查線上資料」測試')}
+async function loadRemote(){let u=localStorage.getItem(URLKEY);if(!u){alert('尚未設定線上資料網址，請先匯入資料或設定 JSON 網址。');return}try{const c=new AbortController,t=setTimeout(()=>c.abort(),12000);let r=await fetch(u,{signal:c.signal,cache:'no-store'});clearTimeout(t);if(!r.ok)throw Error('HTTP '+r.status);let j=await r.json();if(!Array.isArray(j))throw Error('資料必須是陣列');let incoming=normalize(j);if(!incoming.length)throw Error('沒有合格紀錄');draws=normalize([...draws,...incoming]);persist();alert(`已讀取 ${incoming.length} 筆有效資料，請自行確認來源與期別。`)}catch(e){alert('無法讀取線上資料：'+e.message+'。可能是網址、格式或跨網域限制。')}}
+function balls(a){return '<div class="balls">'+a.map(n=>`<span class="ball">${String(n).padStart(2,'0')}</span>`).join('')+'</div>'}
+function render(){const latest=document.getElementById('latest'),sets=document.getElementById('sets'),stats=document.getElementById('stats');document.getElementById('count').textContent=`本機已儲存 ${draws.length} 筆歷史紀錄`;if(!draws.length){latest.className='warning';latest.textContent='尚未匯入已核實的開獎資料。';sets.className='warning';sets.textContent='請先匯入歷史開獎資料。';stats.textContent='尚無資料';return}const d=draws[0];latest.className='';latest.innerHTML=`<b>期別 ${d.period}</b>｜${d.date}${balls([...d.numbers].sort((a,b)=>a-b))}<small>資料來自您匯入或設定的來源，尚未由本工具獨立核實。</small>`;let limit=+document.getElementById('window').value,rows=draws.slice(0,limit),counts=Array(40).fill(0),miss=Array(40).fill(rows.length);let odd=0,large=0,sum=0,consecutive=0;rows.forEach((r,i)=>{let a=[...r.numbers].sort((a,b)=>a-b);for(let n of a){counts[n]++;if(miss[n]===rows.length)miss[n]=i;if(n%2)odd++;if(n>=20)large++;sum+=n}if(a.some((n,j)=>j>0&&n===a[j-1]+1))consecutive++});let rank=Array.from({length:39},(_,i)=>i+1);let hot=[...rank].sort((a,b)=>counts[b]-counts[a]||a-b),cold=[...rank].sort((a,b)=>counts[a]-counts[b]||a-b);let avg=(sum/rows.length).toFixed(1);stats.innerHTML=`<p class="muted">選擇 ${limit} 期，實際分析 ${rows.length} 期。</p><div class="grid"><div class="metric">熱門前五<strong>${hot.slice(0,5).join('、')}</strong></div><div class="metric">冷門前五<strong>${cold.slice(0,5).join('、')}</strong></div><div class="metric">奇 / 偶<strong>${odd} / ${rows.length*5-odd}</strong></div><div class="metric">大(20–39) / 小<strong>${large} / ${rows.length*5-large}</strong></div><div class="metric">平均和值<strong>${avg}</strong></div><div class="metric">含連號期數<strong>${consecutive} / ${rows.length}</strong></div></div><h3>號碼次數與遺漏</h3><div class="scroll"><table><thead><tr><th>號碼</th><th>出現次數</th><th>距今未開期數</th></tr></thead><tbody>${rank.map(n=>`<tr><td>${String(n).padStart(2,'0')}</td><td>${counts[n]}</td><td>${miss[n]===rows.length?'至少 '+rows.length:miss[n]}</td></tr>`).join('')}</tbody></table></div>`;let pool=[...rank].sort((a,b)=>counts[b]-counts[a]||miss[b]-miss[a]);let html='';for(let i=0;i<5;i++){let nums=[],used=new Set();let offsets=[0,7,14,21,28];for(let j=0;j<5;j++){let idx=(offsets[j]+i*3)%39;while(used.has(pool[idx]))idx=(idx+1)%39;used.add(pool[idx]);nums.push(pool[idx])}nums.sort((a,b)=>a-b);html+=`<div class="set"><b>第 ${i+1} 組</b>${balls(nums)}<small>依最近 ${rows.length} 期出現頻率與遺漏期數分散選取；不代表較高中獎機率。</small></div>`}sets.className='';sets.innerHTML=html}
+render();if(localStorage.getItem(URLKEY))loadRemote();
+</script></body></html>
+0 commit comments
+Comments
+0
+ (0)
+Comment
+You're not receiving notifications from this thread.
+
 
