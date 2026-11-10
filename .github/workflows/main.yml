@@ -19,5 +19,5 @@ jobs:
         run: |
           echo "539 每日更新排程"
           TZ=Asia/Taipei date
-      - name：update 539 data
-        run：python update 539.py
+      - name： update 539 data
+        run： python update539.py
