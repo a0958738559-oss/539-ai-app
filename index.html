@@ -1,1 +1,619 @@
 
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>539 AI 統計參考</title>
+
+<style>
+*{box-sizing:border-box}
+body{
+ margin:0;
+ background:#eef4fa;
+ color:#18324a;
+ font-family:system-ui,"Noto Sans TC",sans-serif
+}
+header{
+ background:#155078;
+ color:white;
+ text-align:center;
+ padding:22px 12px
+}
+h1{margin:0;font-size:25px}
+main{max-width:780px;margin:auto;padding:14px}
+.card{
+ background:white;
+ border-radius:14px;
+ padding:18px;
+ margin:12px 0;
+ box-shadow:0 3px 12px #1232
+}
+h2{font-size:19px;margin:0 0 12px}
+button{
+ border:0;
+ background:#1267a2;
+ color:white;
+ border-radius:9px;
+ padding:12px 15px;
+ font-size:16px;
+ margin:4px 4px 4px 0;
+ cursor:pointer
+}
+button.secondary{background:#527085}
+button.danger{background:#a23f3f}
+input,select{
+ width:100%;
+ padding:11px;
+ border:1px solid #b5c7d6;
+ border-radius:8px;
+ font-size:16px;
+ margin:5px 0 12px
+}
+label{display:block;font-weight:600}
+.balls{
+ display:flex;
+ flex-wrap:wrap;
+ gap:8px;
+ margin:12px 0
+}
+.ball{
+ background:#1267a2;
+ color:white;
+ border-radius:50%;
+ width:46px;
+ height:46px;
+ display:grid;
+ place-items:center;
+ font-weight:bold;
+ font-size:19px
+}
+.muted{color:#5e7080;font-size:14px}
+.status{
+ padding:10px;
+ background:#edf4f8;
+ border-radius:8px;
+ white-space:pre-wrap
+}
+.set{
+ padding:9px 0;
+ border-bottom:1px solid #e0e7ed
+}
+table{
+ border-collapse:collapse;
+ width:100%;
+ font-size:14px
+}
+th,td{
+ border-bottom:1px solid #dfe7ee;
+ padding:8px;
+ text-align:left
+}
+a{color:#1267a2}
+small{font-size:13px}
+</style>
+</head>
+
+<body>
+
+<header>
+<h1>今彩539 AI 統計參考</h1>
+<div>手動更新・歷史統計・五組參考號碼</div>
+</header>
+
+<main>
+
+<section class="card">
+<h2>最新已儲存開獎資料</h2>
+<div id="latest">尚未儲存資料</div>
+<div id="status" class="status">
+請先輸入一期真實開獎資料。
+</div>
+</section>
+
+<section class="card">
+<h2>① 官方資料連線測試</h2>
+<p class="muted">
+官方網站可能限制跨站讀取。
+目前不會自動擷取號碼，請核對後手動輸入。
+</p>
+<button id="fetchBtn">測試官方網站連線</button>
+<p>
+<a href="https://www.taiwanlottery.com/"
+target="_blank" rel="noopener">
+開啟台灣彩券官方網站
+</a>
+</p>
+</section>
+
+<section class="card">
+<h2>② 手動輸入開獎資料</h2>
+
+<form id="entry">
+
+<label>開獎期別
+<input id="issue" required
+placeholder="例如：115000273"
+pattern="[0-9]{5,12}">
+</label>
+
+<label>開獎日期
+<input id="date" type="date" required>
+</label>
+
+<label>五個開獎號碼
+<input id="nums" required
+placeholder="例如：01 09 17 26 38">
+</label>
+
+<button type="submit">儲存這一期</button>
+
+</form>
+
+<button class="secondary" id="exportBtn">
+備份資料 JSON
+</button>
+
+<label>匯入之前備份的 JSON
+<input type="file" id="importFile"
+accept=".json,application/json">
+</label>
+
+<p class="muted">
+資料儲存在目前手機瀏覽器中。
+清除網站資料可能造成遺失，請定期備份。
+</p>
+</section>
+
+<section class="card">
+<h2>③ 統計分析</h2>
+
+<label>分析期數
+<select id="window">
+<option>30</option>
+<option>60</option>
+<option>100</option>
+<option>200</option>
+</select>
+</label>
+
+<div id="analysis">尚無資料</div>
+</section>
+
+<section class="card">
+<h2>④ 下一期五組參考號碼</h2>
+
+<button id="generate">
+重新產生參考組合
+</button>
+
+<div id="picks">
+請先儲存歷史資料。
+</div>
+
+<p class="muted">
+統計與隨機選號無法預測開獎，
+所有組合僅供娛樂參考，不保證中獎。
+</p>
+</section>
+
+<section class="card">
+<h2>歷史資料</h2>
+<div id="history"></div>
+
+<button class="danger" id="clear">
+清除全部本機資料
+</button>
+</section>
+
+</main>
+
+<script>
+"use strict";
+
+const KEY="tw539_manual_v1";
+const $=id=>document.getElementById(id);
+
+let draws=[];
+
+function say(s){
+ $("status").textContent=s;
+}
+
+function valid(d){
+ if(!d ||
+ typeof d.issue!=="string" ||
+ !/^[0-9]{5,12}$/.test(d.issue) ||
+ typeof d.date!=="string" ||
+ !/^\d{4}-\d\d-\d\d$/.test(d.date) ||
+ !Array.isArray(d.numbers) ||
+ d.numbers.length!==5)return false;
+
+ const dt=new Date(d.date+"T00:00:00");
+
+ if(!Number.isFinite(dt.getTime()) ||
+ dt.toISOString().slice(0,10)!==d.date)
+ return false;
+
+ return d.numbers.every(n=>
+ Number.isInteger(n)&&n>=1&&n<=39
+ ) && new Set(d.numbers).size===5;
+}
+
+function sort(){
+ draws.sort((a,b)=>
+ b.date.localeCompare(a.date) ||
+ b.issue.localeCompare(a.issue)
+ );
+}
+
+function load(){
+ try{
+ const x=JSON.parse(localStorage.getItem(KEY)||"[]");
+ draws=Array.isArray(x)?x.filter(valid):[];
+ }catch{
+ draws=[];
+ }
+ sort();
+ render();
+}
+
+function save(){
+ localStorage.setItem(KEY,JSON.stringify(draws));
+ render();
+}
+
+function add(d){
+ if(!valid(d))
+ throw Error("期別、日期或號碼不正確");
+
+ if(draws.some(x=>
+ x.issue===d.issue&&x.date!==d.date
+ ))
+ throw Error("同一期別日期不一致");
+
+ draws=draws.filter(x=>x.issue!==d.issue);
+ draws.push(d);
+ sort();
+ save();
+}
+
+function balls(ns){
+ return '<div class="balls">'+
+ ns.map(n=>
+ '<span class="ball">'+
+ String(n).padStart(2,"0")+
+ '</span>'
+ ).join("")+
+ '</div>';
+}
+
+function esc(s){
+ return String(s).replace(
+ /[&<>"']/g,
+ c=>({
+ "&":"&amp;",
+ "<":"&lt;",
+ ">":"&gt;",
+ '"':"&quot;",
+ "'":"&#39;"
+ }[c])
+ );
+}
+
+function selected(){
+ return draws.slice(0,Number($("window").value));
+}
+
+function stats(ds){
+ const freq=Array(40).fill(0);
+ const missing=Array(40).fill(ds.length);
+ const sums=[];
+
+ let odd=0,big=0,consecutive=0;
+
+ ds.forEach((d,i)=>{
+ let ns=[...d.numbers].sort((a,b)=>a-b);
+
+ sums.push(ns.reduce((a,b)=>a+b,0));
+
+ ns.forEach(n=>{
+ freq[n]++;
+
+ if(missing[n]===ds.length)
+ missing[n]=i;
+
+ if(n%2)odd++;
+ if(n>=20)big++;
+ });
+
+ if(ns.some((n,j)=>
+ j>0&&n===ns[j-1]+1
+ ))consecutive++;
+ });
+
+ return {
+ freq,missing,sums,odd,big,consecutive
+ };
+}
+
+function fmtNums(ns){
+ return ns.map(n=>
+ String(n).padStart(2,"0")
+ ).join("、");
+}
+
+function render(){
+ const d=draws[0];
+
+ $("latest").innerHTML=d?
+ "<b>"+esc(d.date)+
+ "｜第 "+esc(d.issue)+" 期</b>"+
+ balls(d.numbers):
+ "尚未儲存資料";
+
+ const ds=selected();
+
+ if(!ds.length){
+ $("analysis").textContent="尚無資料";
+ $("picks").textContent="請先儲存歷史資料。";
+ }else{
+ const s=stats(ds);
+
+ const ranking=Array.from(
+ {length:39},(_,i)=>i+1
+ );
+
+ const hot=[...ranking].sort(
+ (a,b)=>s.freq[b]-s.freq[a]||a-b
+ ).slice(0,10);
+
+ const cold=[...ranking].sort(
+ (a,b)=>s.freq[a]-s.freq[b]||a-b
+ ).slice(0,10);
+
+ const missing=[...ranking].sort(
+ (a,b)=>s.missing[b]-s.missing[a]||a-b
+ ).slice(0,10);
+
+ const total=ds.length*5;
+
+ const sumavg=s.sums.reduce(
+ (a,b)=>a+b,0
+ )/ds.length;
+
+ $("analysis").innerHTML=
+ "<p>實際分析 <b>"+ds.length+
+ "</b> 期（設定 "+$("window").value+" 期）</p>"+
+ "<p><b>熱門：</b>"+fmtNums(hot)+"</p>"+
+ "<p><b>冷門：</b>"+fmtNums(cold)+"</p>"+
+ "<p><b>遺漏較久：</b>"+
+ missing.map(n=>
+ String(n).padStart(2,"0")+
+ "("+s.missing[n]+"期)"
+ ).join("、")+"</p>"+
+ "<p>奇／偶："+s.odd+"／"+
+ (total-s.odd)+"</p>"+
+ "<p>大／小："+s.big+"／"+
+ (total-s.big)+"</p>"+
+ "<p>平均和值："+sumavg.toFixed(1)+"</p>"+
+ "<p>含連號期數："+s.consecutive+
+ "／"+ds.length+"</p>";
+
+ if(!$("picks").dataset.ready)
+ generate();
+ }
+
+ $("history").innerHTML=draws.length?
+ "<p>已儲存 "+draws.length+" 期</p>"+
+ "<table><thead><tr>"+
+ "<th>日期</th><th>期別</th><th>號碼</th>"+
+ "</tr></thead><tbody>"+
+ draws.slice(0,20).map(x=>
+ "<tr><td>"+esc(x.date)+"</td>"+
+ "<td>"+esc(x.issue)+"</td>"+
+ "<td>"+fmtNums(x.numbers)+"</td></tr>"
+ ).join("")+
+ "</tbody></table>":
+ "尚無資料";
+}
+
+function generate(){
+ const ds=selected();
+ if(!ds.length)return;
+
+ const s=stats(ds);
+
+ const ranking=Array.from(
+ {length:39},(_,i)=>i+1
+ );
+
+ const hot=[...ranking].sort(
+ (a,b)=>s.freq[b]-s.freq[a]
+ );
+
+ const cold=[...ranking].sort(
+ (a,b)=>s.freq[a]-s.freq[b]
+ );
+
+ let sets=[];
+ let used=new Set();
+
+ for(let k=0;k<5;k++){
+ let ns;
+
+ for(let attempt=0;attempt<150;attempt++){
+ const pool=[...new Set([
+ ...hot.slice(0,12),
+ ...cold.slice(0,12),
+ ...ranking
+ ])];
+
+ ns=[];
+
+ while(ns.length<5){
+ let n=pool[Math.floor(
+ Math.random()*pool.length
+ )];
+
+ if(!ns.includes(n))
+ ns.push(n);
+ }
+
+ ns.sort((a,b)=>a-b);
+
+ if(!used.has(ns.join(",")))
+ break;
+ }
+
+ used.add(ns.join(","));
+ sets.push(ns);
+ }
+
+ $("picks").innerHTML=sets.map((ns,i)=>
+ '<div class="set"><b>第 '+(i+1)+
+ ' 組</b>'+balls(ns)+
+ '<small>統計參考與隨機選取，非開獎預測。</small>'+
+ '</div>'
+ ).join("");
+
+ $("picks").dataset.ready="1";
+}
+
+$("entry").addEventListener("submit",e=>{
+ e.preventDefault();
+
+ try{
+ const parts=$("nums").value.trim()
+ .split(/[\s,，、;；]+/);
+
+ if(parts.length!==5 ||
+ parts.some(x=>!/^\d{1,2}$/.test(x)))
+ throw Error("請輸入剛好5個整數號碼");
+
+ add({
+ issue:$("issue").value.trim(),
+ date:$("date").value,
+ numbers:parts.map(Number).sort((a,b)=>a-b)
+ });
+
+ $("picks").dataset.ready="";
+ render();
+ say("儲存成功！已更新統計。");
+ $("nums").value="";
+
+ }catch(err){
+ say("儲存失敗："+err.message);
+ }
+});
+
+$("window").addEventListener("change",()=>{
+ $("picks").dataset.ready="";
+ render();
+});
+
+$("generate").addEventListener(
+ "click",generate
+);
+
+$("exportBtn").addEventListener("click",()=>{
+ const blob=new Blob(
+ [JSON.stringify(draws,null,2)],
+ {type:"application/json"}
+ );
+
+ const url=URL.createObjectURL(blob);
+ const a=document.createElement("a");
+
+ a.href=url;
+ a.download="539-backup.json";
+ a.click();
+
+ setTimeout(()=>URL.revokeObjectURL(url),2000);
+});
+
+$("importFile").addEventListener(
+ "change",async e=>{
+ const f=e.target.files[0];
+ if(!f)return;
+
+ try{
+ const arr=JSON.parse(await f.text());
+
+ if(!Array.isArray(arr)||!arr.every(valid))
+ throw Error("備份格式或內容不正確");
+
+ const merged=new Map(
+ draws.map(x=>[x.issue,x])
+ );
+
+ arr.forEach(x=>merged.set(x.issue,x));
+
+ draws=[...merged.values()];
+ sort();
+ save();
+
+ $("picks").dataset.ready="";
+ render();
+
+ say("匯入成功，共 "+arr.length+" 筆。");
+
+ }catch(err){
+ say("匯入失敗："+err.message);
+ }
+
+ e.target.value="";
+});
+
+$("clear").addEventListener("click",()=>{
+ if(confirm("確定清除所有本機539資料？")){
+ draws=[];
+ localStorage.removeItem(KEY);
+ $("picks").dataset.ready="";
+ render();
+ say("已清除本機資料。");
+ }
+});
+
+$("fetchBtn").addEventListener(
+ "click",async()=>{
+ say("正在嘗試連線官方網站…");
+
+ const controller=new AbortController();
+ const timer=setTimeout(
+ ()=>controller.abort(),12000
+ );
+
+ try{
+ const response=await fetch(
+ "https://www.taiwanlottery.com/",
+ {
+ signal:controller.signal,
+ cache:"no-store"
+ }
+ );
+
+ if(!response.ok)
+ throw Error("HTTP "+response.status);
+
+ say(
+ "官方首頁可連線，但目前尚無經驗證的"+
+ "539資料讀取介面。"+
+ "請開啟官方網站核對後手動輸入。"
+ );
+
+ }catch(e){
+ say(
+ "無法直接讀取官方資料。"+
+ "請開啟官方網站核對，並使用手動輸入。"
+ );
+ }finally{
+ clearTimeout(timer);
+ }
+});
+
+load();
+</script>
+
+</body>
+</html>
