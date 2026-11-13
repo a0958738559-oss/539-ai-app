@@ -1,1 +1,657 @@
 
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>今彩539 AI 統計進階版</title>
+
+<style>
+*{box-sizing:border-box}
+body{
+ margin:0;
+ background:#edf3fa;
+ color:#17324b;
+ font:16px system-ui,sans-serif;
+}
+header{
+ background:#17527c;
+ color:white;
+ text-align:center;
+ padding:24px 12px;
+}
+h1{font-size:25px;margin:0 0 10px}
+main{max-width:800px;margin:auto;padding:12px}
+.card{
+ background:white;
+ padding:18px;
+ margin-bottom:15px;
+ border-radius:16px;
+ box-shadow:0 2px 8px #17324b12;
+}
+h2{font-size:20px}
+button{
+ background:#17618e;
+ color:white;
+ border:0;
+ border-radius:8px;
+ padding:12px 15px;
+ margin:5px 4px 5px 0;
+ font-size:16px;
+ cursor:pointer;
+}
+button.gray{background:#536e83}
+button.red{background:#b43c3c}
+input,select,textarea{
+ font:inherit;
+ padding:12px;
+ border:1px solid #bacbd8;
+ border-radius:8px;
+ max-width:100%;
+}
+input[type=date],input[type=text],textarea{
+ width:100%;
+}
+textarea{height:120px}
+label{display:block;margin:12px 0}
+.ball{
+ display:inline-grid;
+ place-items:center;
+ width:42px;
+ height:42px;
+ border-radius:50%;
+ background:#e8aa3f;
+ color:#172c3c;
+ font-weight:bold;
+ margin:3px;
+}
+.stat{
+ background:#f1f6fa;
+ padding:12px;
+ border-radius:10px;
+ margin:10px 0;
+ line-height:1.9;
+}
+.set{
+ padding:15px 0;
+ border-bottom:1px solid #ddd;
+}
+table{
+ border-collapse:collapse;
+ width:100%;
+ font-size:14px;
+}
+td,th{
+ border-bottom:1px solid #ddd;
+ padding:9px 5px;
+ text-align:left;
+}
+.scroll{overflow:auto;max-height:420px}
+.hint{font-size:13px;color:#63788a;line-height:1.7}
+#msg{font-weight:bold;color:#176444}
+#error{color:#b02727;white-space:pre-wrap}
+</style>
+</head>
+
+<body>
+
+<header>
+<h1>今彩539 AI 統計進階版</h1>
+<div>歷史資料｜每日更新｜統計選號</div>
+</header>
+
+<main>
+
+<section class="card">
+<h2>① 歷史資料讀取</h2>
+<button onclick="loadCSV()">重新讀取 GitHub CSV</button>
+<p id="source">準備讀取資料</p>
+<p id="error"></p>
+<p class="hint">
+history.csv 必須與 index.html 放在同一資料夾。
+</p>
+</section>
+
+<section class="card">
+<h2>② 每日手動更新</h2>
+
+<label>開獎日期
+<input type="date" id="date">
+</label>
+
+<label>輸入5個號碼（1～39）
+<input type="text" id="nums"
+placeholder="例如：02,09,30,37,38">
+</label>
+
+<button onclick="addDraw()">儲存／更新本期</button>
+
+<p id="msg"></p>
+
+<p class="hint">
+請先核對官方開獎結果。
+新增資料會儲存在目前瀏覽器，
+下載CSV並更新GitHub後才能永久保存於網站資料庫。
+</p>
+</section>
+
+<section class="card">
+<h2>③ 統計分析與5組參考號碼</h2>
+
+<label>分析期數
+<select id="window" onchange="render()">
+<option value="30">最近30期</option>
+<option value="60">最近60期</option>
+<option value="100">最近100期</option>
+<option value="200">最近200期</option>
+</select>
+</label>
+
+<button onclick="predict()">重新產生5組</button>
+
+<div id="stats"></div>
+<div id="pred"></div>
+
+<p class="hint">
+統計結果僅供參考，無法預測隨機開獎結果，
+也不能提高中獎機率。
+</p>
+</section>
+
+<section class="card">
+<h2>④ 歷史開獎紀錄</h2>
+<p class="hint">
+可修改或刪除本機新增資料。
+GitHub原始資料不會直接被刪除。
+</p>
+<div id="history" class="scroll"></div>
+</section>
+
+<section class="card">
+<h2>⑤ CSV匯入與備份</h2>
+
+<textarea id="bulk"
+placeholder="date,n1,n2,n3,n4,n5"></textarea>
+
+<button onclick="importText()">匯入貼上的資料</button>
+
+<input type="file" id="file"
+accept=".csv,text/csv"
+onchange="importFile(event)">
+
+<br>
+
+<button onclick="exportCSV()">下載完整CSV備份</button>
+
+<p id="backupMsg"></p>
+</section>
+
+</main>
+
+<script>
+"use strict";
+
+const KEY="tw539_advanced_v1";
+let remote=[];
+let local=[];
+let deleted=[];
+let all=[];
+
+const $=id=>document.getElementById(id);
+const pad=n=>String(n).padStart(2,"0");
+
+function validDate(s){
+ if(!/^\d{4}-\d{2}-\d{2}$/.test(s))return false;
+ const d=new Date(s+"T12:00:00");
+ return !isNaN(d.getTime()) &&
+ d.getFullYear()+"-"+pad(d.getMonth()+1)+"-"+
+ pad(d.getDate())===s;
+}
+
+function normalize(date,nums){
+ if(!validDate(date)){
+  throw Error("日期格式錯誤："+date);
+ }
+ if(
+  nums.length!==5 ||
+  nums.some(n=>!Number.isInteger(n)||n<1||n>39) ||
+  new Set(nums).size!==5
+ ){
+  throw Error("必須輸入5個不同的1～39號碼");
+ }
+ return {date,nums:[...nums].sort((a,b)=>a-b)};
+}
+
+function parse(text){
+ const rows=[];
+ const seen=new Set();
+ const lines=text.replace(/^\uFEFF/,"").split(/\r?\n/);
+
+ lines.forEach((line,i)=>{
+  line=line.trim();
+  if(!line)return;
+
+  const a=line.split(",").map(s=>
+   s.trim().replace(/^"|"$/g,"")
+  );
+
+  if(a[0].toLowerCase()==="date")return;
+
+  if(a.length!==6){
+   throw Error("CSV第"+(i+1)+"行欄位錯誤");
+  }
+
+  const nums=a.slice(1).map(s=>
+   /^\d{1,2}$/.test(s)?Number(s):NaN
+  );
+
+  const x=normalize(a[0],nums);
+
+  if(seen.has(x.date)){
+   throw Error("CSV日期重複："+x.date);
+  }
+
+  seen.add(x.date);
+  rows.push(x);
+ });
+
+ return rows;
+}
+
+function merge(){
+ const m=new Map();
+
+ remote.forEach(x=>{
+  if(!deleted.includes(x.date)){
+   m.set(x.date,x);
+  }
+ });
+
+ local.forEach(x=>m.set(x.date,x));
+
+ all=[...m.values()].sort((a,b)=>
+  b.date.localeCompare(a.date)
+ );
+
+ render();
+}
+
+function save(){
+ try{
+  localStorage.setItem(KEY,JSON.stringify({
+   local,deleted
+  }));
+  merge();
+  return true;
+ }catch(e){
+  $("error").textContent="本機儲存失敗："+e.message;
+  return false;
+ }
+}
+
+function addDraw(){
+ try{
+  const date=$("date").value;
+
+  if(date>today()){
+   throw Error("不能儲存未來日期的開獎號碼");
+  }
+
+  const s=$("nums").value
+   .split(/[,，\s]+/)
+   .filter(Boolean);
+
+  const nums=s.map(x=>
+   /^\d{1,2}$/.test(x)?Number(x):NaN
+  );
+
+  const x=normalize(date,nums);
+
+  local=local.filter(d=>d.date!==date);
+  local.push(x);
+
+  deleted=deleted.filter(d=>d!==date);
+
+  if(save()){
+   $("msg").textContent="已成功儲存："+date;
+  }
+
+ }catch(e){
+  $("msg").textContent=e.message;
+ }
+}
+
+function today(){
+ const d=new Date();
+ return d.getFullYear()+"-"+
+ pad(d.getMonth()+1)+"-"+
+ pad(d.getDate());
+}
+
+function editDraw(date){
+ const x=all.find(d=>d.date===date);
+ if(!x)return;
+
+ $("date").value=x.date;
+ $("nums").value=x.nums.map(pad).join(",");
+
+ window.scrollTo({top:0,behavior:"smooth"});
+
+ $("msg").textContent=
+ "已載入 "+date+"，修改後請按儲存";
+}
+
+function deleteDraw(date){
+ if(!confirm("確定刪除 "+date+" 的本機紀錄？")){
+  return;
+ }
+
+ local=local.filter(x=>x.date!==date);
+
+ if(!deleted.includes(date)){
+  deleted.push(date);
+ }
+
+ if(save()){
+  $("msg").textContent="已從本機紀錄移除："+date;
+ }
+}
+
+async function loadCSV(){
+ const src=$("source");
+ const err=$("error");
+
+ src.textContent="讀取中……";
+ err.textContent="";
+
+ try{
+  const r=await fetch(
+   "./history.csv?t="+Date.now(),
+   {cache:"no-store"}
+  );
+
+  if(!r.ok)throw Error("HTTP "+r.status);
+
+  const rows=parse(await r.text());
+
+  remote=rows;
+  merge();
+
+  src.textContent=
+   "GitHub CSV："+rows.length+
+   "筆；合併後："+all.length+"期";
+
+ }catch(e){
+  src.textContent="CSV讀取失敗";
+  err.textContent=e.message;
+  merge();
+ }
+}
+
+function balls(nums){
+ return nums.map(n=>
+  '<span class="ball">'+pad(n)+'</span>'
+ ).join("");
+}
+
+function sample(){
+ return all.slice(0,Number($("window").value));
+}
+
+function analyze(data){
+ const counts=Array(40).fill(0);
+ const miss=Array(40).fill(data.length);
+
+ let odd=0,big=0,sum=0,consec=0;
+
+ data.forEach((d,i)=>{
+  const a=d.nums;
+
+  odd+=a.filter(x=>x%2===1).length;
+  big+=a.filter(x=>x>=20).length;
+  sum+=a.reduce((s,x)=>s+x,0);
+
+  if(a.some((x,j)=>j>0&&x===a[j-1]+1)){
+   consec++;
+  }
+
+  a.forEach(x=>{
+   counts[x]++;
+   if(miss[x]===data.length)miss[x]=i;
+  });
+ });
+
+ return {counts,miss,odd,big,sum,consec};
+}
+
+function render(){
+ const data=sample();
+ const n=data.length;
+
+ let html=
+  "<p>目前共有 <b>"+all.length+
+  "</b> 期；實際分析 <b>"+n+"</b> 期。</p>";
+
+ if(all.length){
+  html+="<p>最新紀錄："+all[0].date+
+   "<br>"+balls(all[0].nums)+"</p>";
+ }
+
+ if(n){
+  const a=analyze(data);
+  const nums=Array.from({length:39},(_,i)=>i+1);
+
+  const hot=[...nums].sort((x,y)=>
+   a.counts[y]-a.counts[x]||x-y
+  ).slice(0,8);
+
+  const cold=[...nums].sort((x,y)=>
+   a.counts[x]-a.counts[y]||x-y
+  ).slice(0,8);
+
+  const overdue=[...nums].sort((x,y)=>
+   a.miss[y]-a.miss[x]||x-y
+  ).slice(0,8);
+
+  html+='<div class="stat"><b>熱門號碼</b><br>'+
+   hot.map(x=>pad(x)+"（"+a.counts[x]+"次）").join("、")+
+   "</div>";
+
+  html+='<div class="stat"><b>冷門號碼</b><br>'+
+   cold.map(x=>pad(x)+"（"+a.counts[x]+"次）").join("、")+
+   "</div>";
+
+  html+='<div class="stat"><b>遺漏期數較多</b><br>'+
+   overdue.map(x=>pad(x)+"（"+a.miss[x]+"期）").join("、")+
+   "</div>";
+
+  html+='<div class="stat">'+
+   "奇數："+a.odd+
+   "／偶數："+(n*5-a.odd)+
+   "<br>大號："+a.big+
+   "／小號："+(n*5-a.big)+
+   "<br>平均和值："+(a.sum/n).toFixed(1)+
+   "<br>含連號期數："+a.consec+
+   "</div>";
+ }
+
+ $("stats").innerHTML=html;
+
+ $("history").innerHTML=all.length?
+  "<table><tr><th>日期</th><th>號碼</th><th>操作</th></tr>"+
+  all.map(d=>
+   "<tr><td>"+d.date+"</td><td>"+
+   d.nums.map(pad).join("、")+
+   "</td><td>"+
+   '<button onclick="editDraw(\''+d.date+'\')">修改</button>'+
+   '<button class="red" onclick="deleteDraw(\''+
+   d.date+'\')">刪除</button>'+
+   "</td></tr>"
+  ).join("")+"</table>":
+  "尚無歷史資料";
+
+ predict(false);
+}
+
+function predict(){
+ const data=sample();
+
+ if(!data.length){
+  $("pred").innerHTML="尚無資料";
+  return;
+ }
+
+ const a=analyze(data);
+ const max=Math.max(1,...a.counts);
+ const sets=[];
+ const used=new Set();
+
+ for(let k=0;k<5;k++){
+  let chosen=[];
+  let found=false;
+
+  for(let attempt=0;attempt<500;attempt++){
+   const pool=Array.from(
+    {length:39},(_,i)=>i+1
+   );
+
+   const scores={};
+
+   pool.forEach(x=>{
+    scores[x]=
+     a.counts[x]/max*0.55+
+     a.miss[x]/data.length*0.45+
+     Math.random()*0.5;
+   });
+
+   pool.sort((x,y)=>scores[y]-scores[x]);
+
+   chosen=pool.slice(0,5).sort((x,y)=>x-y);
+
+   const odd=chosen.filter(x=>x%2).length;
+   const big=chosen.filter(x=>x>=20).length;
+   const key=chosen.join(",");
+
+   if(
+    odd>=2&&odd<=3&&
+    big>=2&&big<=3&&
+    !used.has(key)
+   ){
+    used.add(key);
+    found=true;
+    break;
+   }
+  }
+
+  if(!found){
+   const pool=Array.from(
+    {length:39},(_,i)=>i+1
+   );
+   for(let i=pool.length-1;i>0;i--){
+    const j=Math.floor(Math.random()*(i+1));
+    [pool[i],pool[j]]=[pool[j],pool[i]];
+   }
+   chosen=pool.slice(0,5).sort((x,y)=>x-y);
+  }
+
+  sets.push(chosen);
+ }
+
+ $("pred").innerHTML=
+  "<h3>下一期5組統計參考</h3>"+
+  sets.map((s,i)=>
+   '<div class="set"><b>第'+(i+1)+
+   '組</b><br>'+balls(s)+
+   '<p class="hint">依近期頻率、遺漏期數及奇偶大小比例選取，僅供參考。</p></div>'
+  ).join("");
+}
+
+function importText(){
+ try{
+  const rows=parse($("bulk").value);
+
+  if(!rows.length){
+   throw Error("沒有可匯入資料");
+  }
+
+  const m=new Map(local.map(x=>[x.date,x]));
+
+  rows.forEach(x=>{
+   m.set(x.date,x);
+   deleted=deleted.filter(d=>d!==x.date);
+  });
+
+  local=[...m.values()];
+
+  if(save()){
+   $("backupMsg").textContent=
+    "成功匯入 "+rows.length+" 筆資料";
+  }
+
+ }catch(e){
+  $("backupMsg").textContent=e.message;
+ }
+}
+
+async function importFile(ev){
+ const f=ev.target.files[0];
+ if(!f)return;
+
+ try{
+  $("bulk").value=await f.text();
+  importText();
+ }catch(e){
+  $("backupMsg").textContent=e.message;
+ }
+}
+
+function exportCSV(){
+ const csv=
+  "date,n1,n2,n3,n4,n5\n"+
+  all.slice().reverse().map(d=>
+   [d.date,...d.nums.map(pad)].join(",")
+  ).join("\n")+"\n";
+
+ const blob=new Blob(
+  ["\uFEFF"+csv],
+  {type:"text/csv;charset=utf-8"}
+ );
+
+ const url=URL.createObjectURL(blob);
+ const a=document.createElement("a");
+
+ a.href=url;
+ a.download="history.csv";
+
+ document.body.appendChild(a);
+ a.click();
+ a.remove();
+
+ setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+
+try{
+ const data=JSON.parse(
+  localStorage.getItem(KEY)||"{}"
+ );
+
+ local=(data.local||[]).map(x=>
+  normalize(x.date,x.nums)
+ );
+
+ deleted=Array.isArray(data.deleted)?
+  data.deleted.filter(validDate):[];
+
+}catch(e){
+ $("error").textContent=
+  "本機資料讀取異常："+e.message;
+}
+
+$("date").value=today();
+
+merge();
+loadCSV();
+
+</script>
+</body>
+</html>
