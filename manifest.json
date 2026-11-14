@@ -1,0 +1,12 @@
+
+{
+  "name": "539 AI 預測統計",
+  "short_name": "539 AI",
+  "description": "539 AI 預測統計",
+  "lang": "zh-TW",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#edf3f8",
+  "theme_color": "#154a73"
+}
