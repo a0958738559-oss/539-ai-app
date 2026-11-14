@@ -656,5 +656,16 @@ merge();
 loadCSV();
 
 </script>
+ 
+<script>
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("./sw.js")
+      .then(() => console.log("539 PWA 已啟用"))
+      .catch(error => console.error("PWA 啟用失敗:", error));
+  });
+}
+</script>
+
 </body>
 </html>
