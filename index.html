@@ -368,15 +368,11 @@ async function loadCSV(){
  err.textContent="";
 
  try{
-  const r=await fetch(
-   "./history.csv?t="+Date.now(),
-   {cache:"no-store"}
-  );
+  const r=await fetch("./history.csv");
 
   if(!r.ok)throw Error("HTTP "+r.status);
 
   const rows=parse(await r.text());
-
   remote=rows;
   merge();
 
